@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "LogicalExpressions": {
+      "commandName": "Project",
+      "commandLineArgs": "\"(a OR b) AND c\"\r\n"
+    },
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    }
+  }
+}
