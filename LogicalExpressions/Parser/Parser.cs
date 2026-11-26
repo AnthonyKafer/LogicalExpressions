@@ -45,9 +45,9 @@ namespace LogicalExpressions.Parser
                 throw new InvalidDataException("A expressão é inválida - há operadores que não relacionam variáveis");
 
             if (!result.Any(x => x.OperatorType == OPERATOR_TYPE.OPERADOR))
-                throw new InvalidDataException("A expressão é pois não possui operadores");
+                throw new InvalidDataException("A expressão é inválida pois não possui operadores");
             if (!result.Any(x => x.OperatorType == OPERATOR_TYPE.VARIABLE))
-                throw new InvalidDataException("A expressão é pois não possui variáveis");
+                throw new InvalidDataException("A expressão é inválida pois não possui variáveis");
 
             return result;
         }
@@ -83,16 +83,20 @@ namespace LogicalExpressions.Parser
             {
                 var newToken = new Token(type: OPERATOR_TYPE.VARIABLE, operatorName: currentToken, result.Count);
                 result.Add(newToken);
-
                 if (result.Count >= 2)
                 {
                     var predecessor = result[result.Count - 2];
+
                     if (predecessor.OperatorType == OPERATOR_TYPE.VARIABLE)
                         throw new InvalidDataException($"A expressão é inválida - a variável {newToken.Operator} é precedido por outra variável ( {predecessor.Operator} )");
                     else if (operatorStack.Count == 0 && groupStack.Count == 0)
                         throw new InvalidDataException($"A expressão é inválida, a variável {newToken.Operator} não está em um grupo ou operação");
                     else if (operatorStack.Count > 0)
-                        operatorStack.Pop();
+                    {
+                        var lastOperator = operatorStack.Pop();
+                        if (lastOperator.Operator == "NOT" && operatorStack.Count > 0)
+                            operatorStack.Pop();
+                    }
                 }
             }
             else
@@ -110,7 +114,7 @@ namespace LogicalExpressions.Parser
 
     public class Token
     {
-        private bool Value { get; set; }
+        private bool Value { get; set; } = true;
         public int InGroupDepth { get; set; }
 
         public Token(OPERATOR_TYPE type, string operatorName, int index)

@@ -1,5 +1,6 @@
 ﻿using LogicalExpressions.AST;
 using LogicalExpressions.Parser;
+using LogicalExpressions.PrintHelpers;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -8,18 +9,8 @@ namespace LogicalExpressions.Evaluator
 {
     public static class Evaluator
     {
-
-        public static void EvaluateAstTree(this AstTreeNode root)
+        public static async Task EvaluateAstTree(this AstTreeNode root, List<Token> tokens)
         {
-            var tokens = new List<Token>();
-
-            void FillTokens(AstTreeNode node)
-            {
-                tokens.Add(node.GetNodeValue());
-            }
-
-            root.TraverseAndExecute(FillTokens);
-
             tokens = tokens.OrderBy(x => x.Index).ToList();
 
             var variables = tokens
@@ -43,16 +34,27 @@ namespace LogicalExpressions.Evaluator
                 {
                     if (token.OperatorType == OPERATOR_TYPE.VARIABLE)
                     {
-                        token.SetValue(variableValues[token.Operator]);
-                        Console.Write($" {variableValues[token.Operator]} ");
+                        var currVal = variableValues[token.Operator];
+                        token.SetValue(currVal);
+                        Console.Write($"{PrintHelper.Yellow}{token.Operator}{PrintHelper.Reset}= {PrintHelper.Italic}{(currVal ? PrintHelper.Green : PrintHelper.Red)}{variableValues[token.Operator]}{PrintHelper.Reset}");
+                    }
+                    else if (token.OperatorType == OPERATOR_TYPE.EXPRESSION_GROUPER)
+                    {
+                        Console.Write($"{PrintHelper.Blue}{token.Operator}{PrintHelper.Reset}");
+                    }
+                    else if (token.Operator == "NOT")
+                    {
+                        Console.Write($"{PrintHelper.Cyan} {token.Operator} ");
                     }
                     else
                     {
                         Console.Write($" {token.Operator} ");
                     }
                 }
-                Console.Write($" = {root.GetCurrentResult()}");
+                var val = root.GetCurrentResult();
+                Console.Write($" = {PrintHelper.Bold}{(val ? PrintHelper.Green : PrintHelper.Red)}{val}{PrintHelper.Reset}");
                 Console.WriteLine();
+                await Task.Delay(100);
             }
         }
 
