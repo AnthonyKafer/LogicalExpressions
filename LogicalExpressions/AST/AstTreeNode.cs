@@ -120,7 +120,7 @@ namespace LogicalExpressions.AST
             return this.GetNodeValue().GetValue();
         }
 
-        public void GetCurrentResult(AstTreeNode node) // (
+        public void GetCurrentResult(AstTreeNode node)
         {
             if (node is null)
                 return;
@@ -198,7 +198,6 @@ namespace LogicalExpressions.AST
             int counter = 0;
             Layout(this, 0, ref counter, spacing, labelMax / 2, canvas, colors);
 
-            // Renderiza (StringBuilder, troca de cor só quando muda, sem espaços finais)
             var sb = new System.Text.StringBuilder();
             for (int r = 0; r < height; r++)
             {
@@ -235,7 +234,6 @@ namespace LogicalExpressions.AST
             node == null ? 0 : Math.Max(Label(node).Length,
                 Math.Max(MaxLabel(Child(node, 0)), MaxLabel(Child(node, 1))));
 
-        // Retorna a coluna central do nó (ou -1 se node == null)
         private int Layout(AstTreeNode node, int level, ref int counter,
                            int spacing, int offset, char[,] canvas, string[,] colors)
         {
@@ -247,7 +245,6 @@ namespace LogicalExpressions.AST
 
             int row = level * 2;
 
-            // Valor do nó
             string value = Label(node);
             string nodeColor = node._token.OperatorType != OPERATOR_TYPE.VARIABLE
                 ? PrintHelper.Yellow + PrintHelper.Bold
@@ -260,7 +257,6 @@ namespace LogicalExpressions.AST
                 colors[row, start + i] = nodeColor;
             }
 
-            // Conectores
             if (leftCol >= 0 || rightCol >= 0)
             {
                 int r = row + 1;
