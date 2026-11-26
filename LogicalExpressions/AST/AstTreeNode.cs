@@ -248,7 +248,7 @@ namespace LogicalExpressions.AST
             string value = Label(node);
             string nodeColor = node._token.OperatorType != OPERATOR_TYPE.VARIABLE
                 ? PrintHelper.Yellow + PrintHelper.Bold
-                : PrintHelper.Red;
+                : PrintHelper.White;
 
             int start = col - value.Length / 2;
             for (int i = 0; i < value.Length; i++)
@@ -262,10 +262,10 @@ namespace LogicalExpressions.AST
                 int r = row + 1;
 
                 if (leftCol >= 0)
-                    for (int c = leftCol; c <= col; c++) { canvas[r, c] = '─'; colors[r, c] = PrintHelper.Green; }
+                    for (int c = leftCol; c <= col; c++) { canvas[r, c] = '─'; colors[r, c] = PrintHelper.Cyan; }
 
                 if (rightCol >= 0)
-                    for (int c = col; c <= rightCol; c++) { canvas[r, c] = '─'; colors[r, c] = PrintHelper.Green; }
+                    for (int c = col; c <= rightCol; c++) { canvas[r, c] = '─'; colors[r, c] = PrintHelper.Cyan; }
 
                 if (leftCol >= 0) canvas[r, leftCol] = '┌';
                 if (rightCol >= 0) canvas[r, rightCol] = '┐';
@@ -273,7 +273,7 @@ namespace LogicalExpressions.AST
                 canvas[r, col] = (leftCol >= 0 && rightCol >= 0) ? '┴'
                                : (leftCol >= 0) ? '┘'
                                                                   : '└';
-                colors[r, col] = PrintHelper.Green;
+                colors[r, col] = PrintHelper.Cyan;
             }
 
             return col;

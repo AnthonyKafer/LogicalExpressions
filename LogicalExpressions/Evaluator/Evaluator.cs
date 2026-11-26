@@ -52,7 +52,7 @@ namespace LogicalExpressions.Evaluator
                     }
                 }
                 var val = root.GetCurrentResult();
-                Console.Write($" = {PrintHelper.Bold}{(val ? PrintHelper.Green : PrintHelper.Red)}{val}{PrintHelper.Reset}");
+                Console.Write($" = {(val ? PrintHelper.BrightGreen : PrintHelper.BrightRed)}{val}{PrintHelper.Reset}");
                 Console.WriteLine();
                 await Task.Delay(100);
             }

@@ -15,5 +15,10 @@ namespace LogicalExpressions.PrintHelpers
         public static string Bold = "\u001b[1m";
         public static string Italic = "\x1b[3m";
         public static string Cyan = "\u001b[36m";
+        public static string Blink = "\u001b[5m";
+        public static string BrightRed = "\u001b[91m";
+        public static string BrightGreen = "\u001b[92m";
+        public static string Magenta = "\u001b[35m";
+        public static string White = "\u001b[37m";
     }
 }
