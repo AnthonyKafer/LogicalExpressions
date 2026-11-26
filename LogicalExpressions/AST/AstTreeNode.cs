@@ -1,4 +1,5 @@
 ﻿using LogicalExpressions.Parser;
+using LogicalExpressions.PrintHelpers;
 using System.Xml.Linq;
 using static LogicalExpressions.AST.AstEvaluator;
 
@@ -95,16 +96,23 @@ namespace LogicalExpressions.AST
         {
             return _token;
         }
-
         public void TraverseAndExecute(Action<AstTreeNode> act)
         {
-            if (_children[0] is not null)
-                _children[0].TraverseAndExecute(act);
+            var distinct = new HashSet<AstTreeNode>();
+            TraverseAndExecute(act, this, distinct);
+        }
+        public void TraverseAndExecute(Action<AstTreeNode> act, AstTreeNode node, HashSet<AstTreeNode> visiteds)
+        {
+            if (node is null)
+                return;
+            if (visiteds.Contains(node))
+                return;
+            else
+                visiteds.Add(node);
 
-            if (_children.Length > 1 && _children[1] is not null)
-                _children[1].TraverseAndExecute(act);
-
-            act(this);
+            foreach (var c in node._children)
+                TraverseAndExecute(act, c, visiteds);
+            act(node);
         }
         public bool GetCurrentResult()
         {
@@ -112,81 +120,187 @@ namespace LogicalExpressions.AST
             return this.GetNodeValue().GetValue();
         }
 
-        public void GetCurrentResult(AstTreeNode node)
+        public void GetCurrentResult(AstTreeNode node) // (
         {
-            if (node._token.OperatorType == OPERATOR_TYPE.OPERADOR && node._children is null)
+            if (node is null)
                 return;
-            if (node._token.OperatorType == OPERATOR_TYPE.OPERADOR)
+            if (node._token.OperatorType == OPERATOR_TYPE.EXPRESSION_GROUPER &&
+                node._children[0] is null && node._children[1] is null)
+                return;
+            if (node._token.OperatorType == OPERATOR_TYPE.VARIABLE)
+                return;
+
+            if (node._token.OperatorType == OPERATOR_TYPE.OPERADOR && node._token.Operator == "NOT")
             {
-                AstTreeNode aVal = node._children[0], bVal = node._children[1];
-
-                if (aVal._token.OperatorType == OPERATOR_TYPE.EXPRESSION_GROUPER)
-                    GetCurrentResult(aVal);
-
-                if (bVal._token.OperatorType == OPERATOR_TYPE.EXPRESSION_GROUPER)
-                    GetCurrentResult(bVal);
-
-                bool aTokenVal = aVal._token.GetValue(), bTokenVal = bVal._token.GetValue();
-
-                if (node._token.Operator == "AND")
-                    node._token.SetValue(aTokenVal && bTokenVal);
-                else if (node._token.Operator == "OR")
-                    node._token.SetValue(aTokenVal || bTokenVal);
-
-                _parent?.GetNodeValue().SetValue(node._token.GetValue());
+                GetCurrentResult(node._children[0]);
+                var tokenToInvert = node._children[0].GetNodeValue();
+                var val = !tokenToInvert.GetValue();
+                node._token.SetValue(val);
                 return;
             }
 
-            if (node._children[0] is not null)
-                GetCurrentResult(node._children[0]);
-            if (node._children[1] is not null)
-                GetCurrentResult(node._children[1]);
+            AstTreeNode aVal = node._children[0], bVal = node._children[1];
+
+            bool shouldFetchA = shouldFetchDeeper(aVal);
+            bool shouldFetchB = shouldFetchDeeper(bVal);
+
+            if (shouldFetchA)
+                GetCurrentResult(aVal);
+
+            if (shouldFetchB)
+                GetCurrentResult(bVal);
+
+            if (!shouldFetchA && aVal._token.OperatorType != OPERATOR_TYPE.VARIABLE)
+            {
+                aVal._token.SetValue(bVal._token.GetValue());
+            }
+            if (!shouldFetchB && bVal._token.OperatorType != OPERATOR_TYPE.VARIABLE)
+            {
+                bVal._token.SetValue(aVal._token.GetValue());
+            }
+
+            bool aTokenVal = aVal._token.GetValue(), bTokenVal = bVal._token.GetValue();
+
+            if (node._token.Operator == "AND")
+                node._token.SetValue(aTokenVal && bTokenVal);
+            else if (node._token.Operator == "OR")
+                node._token.SetValue(aTokenVal || bTokenVal);
+
+            node._parent?.GetNodeValue().SetValue(node._token.GetValue());
+            return;
+        }
+
+        private bool shouldFetchDeeper(AstTreeNode node)
+        {
+            return node is not null && (node._children[0] is not null || node._children[1] is not null);
         }
 
         public void PrintTree()
         {
-            int leftDepth = GetDepth(0, this, TREE_DIRECTION.LEFT), right = GetDepth(0, this, TREE_DIRECTION.RIGHT);
-            int maxDepth = Math.Max(leftDepth, right);
-            string[] lines = new string[maxDepth * 3 + 2];
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-            var tabs = (maxDepth * 2 + 1);
+            int depth = GetDepth(this);
+            int labelMax = MaxLabel(this);
+            int spacing = labelMax + 1;
+            int width = CountNodes(this) * spacing + labelMax;
+            int height = depth * 2 - 1;
 
-            PrintTree(this, 0, tabs, lines, maxDepth);
-            foreach (var line in lines)
+            var canvas = new char[height, width];
+            var colors = new string[height, width];
+
+            for (int r = 0; r < height; r++)
+                for (int c = 0; c < width; c++)
+                {
+                    canvas[r, c] = ' ';
+                    colors[r, c] = PrintHelper.Reset;
+                }
+
+            int counter = 0;
+            Layout(this, 0, ref counter, spacing, labelMax / 2, canvas, colors);
+
+            // Renderiza (StringBuilder, troca de cor só quando muda, sem espaços finais)
+            var sb = new System.Text.StringBuilder();
+            for (int r = 0; r < height; r++)
             {
-                Console.WriteLine(line);
+                int last = width - 1;
+                while (last >= 0 && canvas[r, last] == ' ') last--;
+
+                string current = PrintHelper.Reset;
+                for (int c = 0; c <= last; c++)
+                {
+                    if (colors[r, c] != current)
+                    {
+                        current = colors[r, c];
+                        sb.Append(current);
+                    }
+                    sb.Append(canvas[r, c]);
+                }
+                sb.Append(PrintHelper.Reset).AppendLine();
             }
+            Console.Write(sb.ToString());
         }
 
-        public void PrintTree(AstTreeNode node, int currDepth, int currPad, string[] lines, int maxDepth)
-        {
-            var pad = new String(' ', currPad);
-            lines[currDepth] += $"{pad}{node._token.Operator}";
-            currDepth++;
-            lines[currDepth] += $"{pad}{(node._children[0] is not null ? "/" : "")}{(node._children[1] is not null ? "\\" : "")}";
+        private static AstTreeNode Child(AstTreeNode node, int i) =>
+            node?._children != null && i < node._children.Length ? node._children[i] : null;
 
+        private static string Label(AstTreeNode node) => node._token.Operator.ToString();
+
+        private int GetDepth(AstTreeNode node) =>
+            node == null ? 0 : 1 + Math.Max(GetDepth(Child(node, 0)), GetDepth(Child(node, 1)));
+
+        private int CountNodes(AstTreeNode node) =>
+            node == null ? 0 : 1 + CountNodes(Child(node, 0)) + CountNodes(Child(node, 1));
+
+        private int MaxLabel(AstTreeNode node) =>
+            node == null ? 0 : Math.Max(Label(node).Length,
+                Math.Max(MaxLabel(Child(node, 0)), MaxLabel(Child(node, 1))));
+
+        // Retorna a coluna central do nó (ou -1 se node == null)
+        private int Layout(AstTreeNode node, int level, ref int counter,
+                           int spacing, int offset, char[,] canvas, string[,] colors)
+        {
+            if (node == null) return -1;
+
+            int leftCol = Layout(Child(node, 0), level + 1, ref counter, spacing, offset, canvas, colors);
+            int col = counter++ * spacing + offset;
+            int rightCol = Layout(Child(node, 1), level + 1, ref counter, spacing, offset, canvas, colors);
+
+            int row = level * 2;
+
+            // Valor do nó
+            string value = Label(node);
+            string nodeColor = node._token.OperatorType != OPERATOR_TYPE.VARIABLE
+                ? PrintHelper.Yellow + PrintHelper.Bold
+                : PrintHelper.Red;
+
+            int start = col - value.Length / 2;
+            for (int i = 0; i < value.Length; i++)
+            {
+                canvas[row, start + i] = value[i];
+                colors[row, start + i] = nodeColor;
+            }
+
+            // Conectores
+            if (leftCol >= 0 || rightCol >= 0)
+            {
+                int r = row + 1;
+
+                if (leftCol >= 0)
+                    for (int c = leftCol; c <= col; c++) { canvas[r, c] = '─'; colors[r, c] = PrintHelper.Green; }
+
+                if (rightCol >= 0)
+                    for (int c = col; c <= rightCol; c++) { canvas[r, c] = '─'; colors[r, c] = PrintHelper.Green; }
+
+                if (leftCol >= 0) canvas[r, leftCol] = '┌';
+                if (rightCol >= 0) canvas[r, rightCol] = '┐';
+
+                canvas[r, col] = (leftCol >= 0 && rightCol >= 0) ? '┴'
+                               : (leftCol >= 0) ? '┘'
+                                                                  : '└';
+                colors[r, col] = PrintHelper.Green;
+            }
+
+            return col;
+        }
+
+        private int GetNodesNumber(int index, AstTreeNode? node)
+        {
+            int left = 0, right = 0;
             if (node._children[0] is not null)
-                PrintTree(node._children[0], currDepth + 1, GetPadd(currPad, TREE_DIRECTION.LEFT), lines, maxDepth);
+                left = GetNodesNumber(index + 1, node._children[0], TREE_DIRECTION.LEFT);
             if (node._children[1] is not null)
-                PrintTree(node._children[1], currDepth + 1, GetPadd(currPad / 2, TREE_DIRECTION.RIGHT), lines, maxDepth);
+                right = GetNodesNumber(index + 1, node._children[1], TREE_DIRECTION.RIGHT);
+
+            return left + right;
         }
 
-        private int GetPadd(int curr, TREE_DIRECTION direction)
+        private int GetNodesNumber(int index, AstTreeNode? node, TREE_DIRECTION direction)
         {
-            if (direction == TREE_DIRECTION.LEFT)
-                return curr--;
-            if (direction == TREE_DIRECTION.RIGHT)
-                return curr++;
-            return curr;
-        }
-
-        private int GetDepth(int index, AstTreeNode? node, TREE_DIRECTION direction)
-        {
-            if (direction == TREE_DIRECTION.LEFT && node._children[0] is not null)
-                return GetDepth(index + 1, node._children[0], direction);
-            else if (direction == TREE_DIRECTION.RIGHT && node._children[1] is not null)
-                return GetDepth(index + 1, node._children[1], direction);
-            return index + 1;
+            if (node._children[0] is not null)
+                return index + GetNodesNumber(index + 1, node._children[0]);
+            if (node._children[1] is not null)
+                return index + GetNodesNumber(index + 1, node._children[1]);
+            return index;
         }
 
     }

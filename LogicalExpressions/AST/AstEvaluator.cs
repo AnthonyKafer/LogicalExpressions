@@ -5,8 +5,7 @@ namespace LogicalExpressions.AST
 {
     public class AstEvaluator
     {
-        private string[] _operatorPrecedence = new string[] { "AND", "OR" };
-        private HashSet<int> _seenIndexes = new();
+        private string[] _operatorPrecedence = new string[] { "AND", "OR", "NOT" };
         public AstTreeNode MountAstTree(List<Token> tokens)
         {
             AstTreeNode root = new AstTreeNode(FindGreatesPrecedence(tokens));
@@ -20,42 +19,6 @@ namespace LogicalExpressions.AST
                 );
 
             return root;
-        }
-
-        public void TestePrint(AstTreeNode root)
-        {
-            var sb = new StringBuilder();
-            List<Token> sla = new();
-
-            void coloring(List<Token> tokens)
-            {
-                foreach (var tk in tokens)
-                {
-                    if (tk.OperatorType == OPERATOR_TYPE.EXPRESSION_GROUPER)
-                        sb.Append("\u001b[33m");
-
-                    else if (tk.OperatorType == OPERATOR_TYPE.VARIABLE)
-                        sb.Append("\u001b[31m");
-
-                    else if (tk.OperatorType == OPERATOR_TYPE.OPERADOR)
-                        sb.Append("\u001b[32m");
-
-                    sb.Append($" {tk.Operator} ");
-                    sb.Append("\u001b[0m");
-                }
-            }
-            void Append(AstTreeNode act)
-            {
-                sla.Add(act.GetNodeValue());
-            }
-
-            root.TraverseAndExecute(Append);
-            var order = sla.OrderBy(x => x.Index)
-                .ToList();
-
-            coloring(order);
-            var str = sb.ToString();
-            Console.WriteLine(str);
         }
 
         private AstTreeNode? FillTree(AstTreeNode root, List<Token> tokens, int index, TREE_DIRECTION direction)
@@ -85,7 +48,12 @@ namespace LogicalExpressions.AST
                 thisMasterRoot.AddChildren(closingGroup, operadorChild);
             }
 
-            if (thisMasterToken.OperatorType == OPERATOR_TYPE.OPERADOR)
+            if (thisMasterToken.OperatorType == OPERATOR_TYPE.OPERADOR && thisMasterToken.Operator == "NOT")
+            {
+                var leftChild = FillTree(thisMasterRoot, tokens, SetNewIndex(index, direction), direction);
+                thisMasterRoot.AddChild(leftChild);
+            }
+            else if (thisMasterToken.OperatorType == OPERATOR_TYPE.OPERADOR)
             {
                 var leftChild = FillTree(thisMasterRoot, tokens, SetNewIndex(index, TREE_DIRECTION.LEFT), direction);
                 var rightChild = FillTree(thisMasterRoot, tokens, SetNewIndex(index, TREE_DIRECTION.RIGHT), direction);
